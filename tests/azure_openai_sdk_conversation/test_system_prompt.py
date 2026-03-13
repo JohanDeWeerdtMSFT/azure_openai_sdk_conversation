@@ -107,3 +107,42 @@ async def test_build_mcp_delta(hass, logger):
     ):
         prompt = await builder.build(conversation_id="conv1")
         assert prompt == "Delta Prompt"
+
+
+@pytest.mark.anyio
+async def test_build_mcp_delta_fallback_on_none(hass, logger):
+    """When build_delta_prompt returns None (TTL expired), fall back to full context."""
+    config = AgentConfig.from_dict(
+        hass,
+        {
+            "api_key": "test",
+            "api_base": "https://test",
+            "chat_model": "gpt-4o",
+            "mcp_enabled": True,
+        },
+    )
+    hass.loop.create_task = MagicMock()
+
+    entities = [
+        {
+            "entity_id": "light.desk_lamp",
+            "name": "Desk Lamp",
+            "state": "on",
+            "area": "Office",
+            "aliases": ["desk lamp"],
+        }
+    ]
+
+    builder = SystemPromptBuilder(hass, config, logger)
+    builder._collector.collect = AsyncMock(return_value=entities)
+
+    with (
+        patch.object(builder._mcp, "is_new_conversation", return_value=False),
+        # Simulate TTL-expired conversation: MCP manager returns None
+        patch.object(builder._mcp, "build_delta_prompt", return_value=None),
+    ):
+        prompt = await builder.build(conversation_id="conv_ttl_expired")
+        # Must fall back to full context, not an empty/minimal message
+        assert "light.desk_lamp" in prompt
+        assert "Desk Lamp" in prompt
+

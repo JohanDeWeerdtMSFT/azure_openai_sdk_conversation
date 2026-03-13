@@ -77,7 +77,7 @@ class SystemPromptBuilder:
             is_initial = self._mcp.is_new_conversation(conversation_id)
 
             if is_initial:
-                # First message: full context
+                # First message: full context including all entity states
                 prompt = self._mcp.build_initial_prompt(
                     conversation_id=conversation_id,
                     entities=entities,
@@ -87,15 +87,23 @@ class SystemPromptBuilder:
                     "Built initial system prompt with %d entities", len(entities)
                 )
             else:
-                # Subsequent message: delta only
+                # Subsequent message: entity resolution map + state delta.
+                # build_delta_prompt always returns a non-None string so the model
+                # retains the full entity map (name/alias → entity_id) every turn.
                 prompt = self._mcp.build_delta_prompt(
                     conversation_id=conversation_id,
                     entities=entities,
                 )
                 if not prompt:
-                    # No changes, use minimal message
-                    prompt = "No entity state changes since last update."
-                self._logger.debug("Built delta system prompt")
+                    # Conversation was not found in MCP state (e.g. TTL expired);
+                    # fall back to full context so entity resolution is never lost.
+                    self._logger.warning(
+                        "MCP delta returned None for conv=%s; falling back to full context",
+                        conversation_id,
+                    )
+                    prompt = await self._build_full_prompt(base_prompt, entities)
+                else:
+                    self._logger.debug("Built delta system prompt for conv=%s", conversation_id)
 
             return prompt
 
