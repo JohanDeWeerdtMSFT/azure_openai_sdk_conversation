@@ -60,12 +60,16 @@ class LocalIntentHandler:
         """Ensure vocabulary/synonyms are loaded."""
         await self._normalizer.ensure_loaded()
 
-    def normalize_text(self, text: str) -> str:
+    def normalize_text(self, text: str, language: str | None = None) -> str:
         """
         Normalize text using vocabulary rules.
 
         Args:
             text: Raw user input text
+            language: Optional BCP-47 language tag (e.g. ``"it"``, ``"en"``).
+                When provided and not Italian, default Italian vocabulary
+                substitutions are skipped to prevent cross-language token
+                replacement.
 
         Returns:
             Normalized text
@@ -73,7 +77,7 @@ class LocalIntentHandler:
         if not self._config.vocabulary_enable:
             return text.strip()
 
-        return self._normalizer.normalize(text)
+        return self._normalizer.normalize(text, language)
 
     async def try_handle(
         self,

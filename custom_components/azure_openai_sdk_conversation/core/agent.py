@@ -269,7 +269,7 @@ class AzureOpenAIConversationAgent(AbstractConversationAgent):
                 await self._local_handler.ensure_vocabulary_loaded()
 
             # Normalize text
-            normalized_text = self._local_handler.normalize_text(text_raw)
+            normalized_text = self._local_handler.normalize_text(text_raw, language)
             metrics.normalized_text = normalized_text
 
             # Try local intent handling first
