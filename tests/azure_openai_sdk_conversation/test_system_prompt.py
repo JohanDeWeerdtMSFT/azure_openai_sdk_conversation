@@ -85,6 +85,65 @@ async def test_build_mcp_initial(hass, logger):
 
 
 @pytest.mark.anyio
+async def test_entity_context_contains_resolution_rules(builder):
+    """Entity context must contain strict alias-resolution rules."""
+    entities = [
+        {
+            "entity_id": "light.desk",
+            "name": "Desk Lamp",
+            "state": "off",
+            "area": "Office",
+            "aliases": ["desk lamp", "the desk light"],
+        }
+    ]
+    context = SystemPromptBuilder._format_entity_context(entities)
+
+    # Rules section must be present
+    assert "Entity Resolution Rules" in context
+    assert "NEVER" in context or "never" in context.lower()
+    assert "alias" in context.lower() or "name" in context.lower()
+
+
+@pytest.mark.anyio
+async def test_entity_context_no_tool_call_without_resolution(builder):
+    """Entity context must instruct model not to call tool before resolving entity."""
+    entities = [
+        {
+            "entity_id": "light.desk",
+            "name": "Desk Lamp",
+            "state": "off",
+            "area": "Office",
+            "aliases": [],
+        }
+    ]
+    context = SystemPromptBuilder._format_entity_context(entities)
+
+    # Must contain instruction to not call tool without resolved target
+    assert "do not" in context.lower() or "until you have resolved" in context.lower()
+
+
+@pytest.mark.anyio
+async def test_build_full_prompt_contains_alias_rules(builder):
+    """Full prompt must embed alias-resolution rules."""
+    builder._collector.collect = AsyncMock(
+        return_value=[
+            {
+                "entity_id": "light.desk",
+                "name": "Desk Lamp",
+                "state": "off",
+                "area": "Office",
+                "aliases": ["desk lamp"],
+            }
+        ]
+    )
+
+    prompt = await builder.build()
+
+    assert "Entity Resolution Rules" in prompt
+    assert "desk lamp" in prompt.lower() or "Desk Lamp" in prompt
+
+
+@pytest.mark.anyio
 async def test_build_mcp_delta(hass, logger):
     """Test building MCP delta prompt."""
     config = AgentConfig.from_dict(

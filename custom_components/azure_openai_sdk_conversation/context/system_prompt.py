@@ -160,7 +160,19 @@ class SystemPromptBuilder:
             by_area[area].append(entity)
 
         # Build formatted string
-        lines = ["**Entity State Information**:"]
+        lines = [
+            "**Entity Resolution Rules** (STRICT - follow before every tool call):",
+            "1. Always look up the entity list below to find the exact `entity_id`.",
+            "2. Match the user's name or alias (e.g., 'desk lamp', 'the lamp') to the"
+            " `name` or `aliases` columns.",
+            "3. NEVER guess, invent, or hallucinate entity_ids.",
+            "4. Do NOT call any service tool until you have resolved the exact"
+            " entity_id from the list below.",
+            "5. If no matching entity is found, ask the user for clarification instead"
+            " of making a tool call.",
+            "",
+            "**Entity State Information**:",
+        ]
 
         for area in sorted(by_area.keys()):
             if area == "_no_area":
