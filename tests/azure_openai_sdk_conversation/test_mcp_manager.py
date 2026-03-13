@@ -43,21 +43,27 @@ async def test_mcp_manager_initial_and_delta(manager):
     # Initial
     assert manager.is_new_conversation(conv_id) is True
     prompt = manager.build_initial_prompt(conv_id, entities, "Base")
+    assert "Base" in prompt
+    assert "Current time:" in prompt
     assert "Light" in prompt
     assert manager.is_new_conversation(conv_id) is False
 
-    # Delta - no change
-    delta = manager.build_delta_prompt(conv_id, entities)
-    assert delta is None
+    # Delta - no change still returns a complete follow-up prompt
+    delta = manager.build_delta_prompt(conv_id, entities, "Base")
+    assert "Base" in delta
+    assert "Current time:" in delta
+    assert "No entity state changes since the previous snapshot." in delta
 
     # Delta - state change
     entities[0]["state"] = "on"
-    delta = manager.build_delta_prompt(conv_id, entities)
+    delta = manager.build_delta_prompt(conv_id, entities, "Base")
+    assert "Base" in delta
+    assert "Current time:" in delta
     assert "Changed entities" in delta
     assert "light.test" in delta
 
     # Delta - removed entity
-    delta = manager.build_delta_prompt(conv_id, [])
+    delta = manager.build_delta_prompt(conv_id, [], "Base")
     assert "Removed entities: light.test" in delta
 
 

@@ -3,7 +3,7 @@ System prompt builder with MCP integration.
 
 Builds system prompts with entity state information, using either:
 - Full context (first message)
-- Delta updates (MCP mode for subsequent messages)
+- Full prompt plus delta context (MCP mode for subsequent messages)
 """
 
 from __future__ import annotations
@@ -87,14 +87,12 @@ class SystemPromptBuilder:
                     "Built initial system prompt with %d entities", len(entities)
                 )
             else:
-                # Subsequent message: delta only
+                # Subsequent message: complete prompt with delta context
                 prompt = self._mcp.build_delta_prompt(
                     conversation_id=conversation_id,
                     entities=entities,
+                    base_prompt=base_prompt,
                 )
-                if not prompt:
-                    # No changes, use minimal message
-                    prompt = "No entity state changes since last update."
                 self._logger.debug("Built delta system prompt")
 
             return prompt

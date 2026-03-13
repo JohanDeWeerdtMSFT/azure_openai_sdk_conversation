@@ -101,9 +101,14 @@ async def test_build_mcp_delta(hass, logger):
     builder = SystemPromptBuilder(hass, config, logger)
     builder._collector.collect = AsyncMock(return_value=[])
 
-    with (
-        patch.object(builder._mcp, "is_new_conversation", return_value=False),
-        patch.object(builder._mcp, "build_delta_prompt", return_value="Delta Prompt"),
-    ):
-        prompt = await builder.build(conversation_id="conv1")
-        assert prompt == "Delta Prompt"
+    with patch.object(builder._mcp, "is_new_conversation", return_value=False):
+        with patch.object(
+            builder._mcp, "build_delta_prompt", return_value="Delta Prompt"
+        ) as delta_mock:
+            prompt = await builder.build(conversation_id="conv1")
+            assert prompt == "Delta Prompt"
+            delta_mock.assert_called_once_with(
+                conversation_id="conv1",
+                entities=[],
+                base_prompt=config.system_prompt,
+            )

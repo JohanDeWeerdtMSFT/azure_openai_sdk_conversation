@@ -1,7 +1,7 @@
 """
 MCP Server per Home Assistant con gestione stateful del contesto.
-Invia il system prompt completo solo alla prima richiesta, poi mantiene
-lo stato e invia solo le entità che hanno cambiato stato.
+Invia un system prompt completo alla prima richiesta e, nei turni successivi,
+mantiene lo stato ma conserva un prompt completo con contesto delta.
 """
 
 from __future__ import annotations
@@ -79,21 +79,24 @@ class HAMCPStateManager:
             )
             entity_states[e["entity_id"]] = state
 
+        now = datetime.now(timezone.utc)
+
         self._conversations[conversation_id] = entity_states
-        self._last_updated[conversation_id] = datetime.now(timezone.utc)
+        self._last_updated[conversation_id] = now
 
         # Formatta il prompt con CSV raggruppato per area
         entities_csv = self._format_entities_as_csv(entity_states.values())
 
-        prompt = f"""{base_prompt}
-
-**Entity State Information** (Initial Full State):
-Current time: {datetime.now(timezone.utc).isoformat()}
-
-{entities_csv}
-
-This is your initial state snapshot. In subsequent messages, you will only receive updates for entities that changed state.
-"""
+        prompt = self._compose_prompt(
+            base_prompt=base_prompt,
+            state_header="**Entity State Information** (Initial Full State):",
+            current_time=now.isoformat(),
+            body=entities_csv,
+            footer=(
+                "This is your initial state snapshot. In subsequent messages, "
+                "you will only receive updates for entities that changed state."
+            ),
+        )
 
         _LOGGER.info(
             "MCP: Created initial state for conversation %s with %d entities (%d tokens est.)",
@@ -108,7 +111,8 @@ This is your initial state snapshot. In subsequent messages, you will only recei
         self,
         conversation_id: str,
         current_entities: list[dict[str, Any]],
-    ) -> str | None:
+        base_prompt: str,
+    ) -> str:
         """
         Genera un prompt delta contenente solo le entità che hanno cambiato stato.
 
@@ -117,18 +121,19 @@ This is your initial state snapshot. In subsequent messages, you will only recei
             current_entities: Stato attuale delle entità da HA
 
         Returns:
-            Prompt con solo i cambiamenti, None se nessun cambiamento
+            Prompt completo con contesto delta
         """
         if conversation_id not in self._conversations:
             _LOGGER.warning(
                 "MCP: Conversation %s not found, should use initial prompt",
                 conversation_id,
             )
-            return None
+            return self.get_initial_prompt(conversation_id, current_entities, base_prompt)
 
         stored_states = self._conversations[conversation_id]
         changed_entities: list[EntityState] = []
         new_entities: list[EntityState] = []
+        now = datetime.now(timezone.utc)
 
         # Identifica cambiamenti e nuove entità
         for e in current_entities:
@@ -139,7 +144,7 @@ This is your initial state snapshot. In subsequent messages, you will only recei
                 state=e["state"],
                 area=e.get("area", ""),
                 aliases=e.get("aliases", []),
-                last_updated=datetime.now(timezone.utc).isoformat(),
+                last_updated=now.isoformat(),
             )
 
             if entity_id not in stored_states:
@@ -158,16 +163,10 @@ This is your initial state snapshot. In subsequent messages, you will only recei
             del stored_states[eid]
 
         # Aggiorna timestamp
-        self._last_updated[conversation_id] = datetime.now(timezone.utc)
-
-        # Se non ci sono cambiamenti, non inviare nulla
-        if not changed_entities and not new_entities and not removed_ids:
-            return None
+        self._last_updated[conversation_id] = now
 
         # Formatta il delta
-        delta_parts = [
-            f"**State Update** (Delta at {datetime.now(timezone.utc).isoformat()}):"
-        ]
+        delta_parts = [f"**State Update** (Delta at {now.isoformat()}):"]
 
         if changed_entities:
             delta_parts.append("\nChanged entities:")
@@ -180,7 +179,20 @@ This is your initial state snapshot. In subsequent messages, you will only recei
         if removed_ids:
             delta_parts.append(f"\nRemoved entities: {', '.join(removed_ids)}")
 
+        if not changed_entities and not new_entities and not removed_ids:
+            delta_parts.append("\nNo entity state changes since the previous snapshot.")
+
+        delta_parts.append(
+            "\nEntities not listed below are unchanged from the previous snapshot."
+        )
+
         delta_prompt = "\n".join(delta_parts)
+        prompt = self._compose_prompt(
+            base_prompt=base_prompt,
+            state_header="**Entity State Information** (Delta Update):",
+            current_time=now.isoformat(),
+            body=delta_prompt,
+        )
 
         _LOGGER.info(
             "MCP: Delta for conversation %s: %d changed, %d new, %d removed (%d tokens est.)",
@@ -191,7 +203,28 @@ This is your initial state snapshot. In subsequent messages, you will only recei
             len(delta_prompt.split()) * 1.3,
         )
 
-        return delta_prompt
+        return prompt
+
+    @staticmethod
+    def _compose_prompt(
+        base_prompt: str,
+        state_header: str,
+        current_time: str,
+        body: str,
+        footer: str = "",
+    ) -> str:
+        """Compone un system prompt completo per un turno MCP."""
+        parts = [
+            base_prompt,
+            "",
+            state_header,
+            f"Current time: {current_time}",
+            "",
+            body,
+        ]
+        if footer:
+            parts.extend(["", footer])
+        return "\n".join(parts)
 
     def _format_entities_as_csv(self, entities: list[EntityState]) -> str:
         """Formatta una lista di entità come CSV raggruppato per area."""
@@ -311,13 +344,10 @@ class HAMCPServer:
                 conversation_id, entities, base_prompt
             )
         else:
-            # Richieste successive: invia solo delta
-            delta = self._state_mgr.get_delta_prompt(conversation_id, entities)
-            if delta:
-                return delta
-            else:
-                # Nessun cambiamento: invia un messaggio minimale
-                return f"**State Update**: No changes since last update at {datetime.now(timezone.utc).isoformat()}"
+            # Richieste successive: invia prompt completo con delta
+            return self._state_mgr.get_delta_prompt(
+                conversation_id, entities, base_prompt
+            )
 
     def _format_full_prompt(
         self,

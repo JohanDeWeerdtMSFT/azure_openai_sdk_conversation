@@ -2,7 +2,7 @@
 MCP (Model Context Protocol) Server Manager.
 
 Manages stateful context tracking across conversation turns,
-sending only delta updates instead of full state every time.
+building complete prompts that include either a full snapshot or delta context.
 """
 
 from __future__ import annotations
@@ -117,22 +117,24 @@ class MCPManager:
             )
             entity_states[e["entity_id"]] = state
 
+        now = datetime.now(timezone.utc)
+
         # Store state
         self._conversations[conversation_id] = entity_states
-        self._last_updated[conversation_id] = datetime.now(timezone.utc)
+        self._last_updated[conversation_id] = now
 
         # Build prompt with full context
         entity_csv = self._format_entities_csv(entity_states.values())
-
-        prompt = f"""{base_prompt}
-
-**Entity State Information** (Initial Full State):
-Current time: {datetime.now(timezone.utc).isoformat()}
-
-{entity_csv}
-
-This is your initial state snapshot. In subsequent messages, you will only receive updates for entities that changed state.
-"""
+        prompt = self._compose_prompt(
+            base_prompt=base_prompt,
+            state_header="**Entity State Information** (Initial Full State):",
+            current_time=now.isoformat(),
+            body=entity_csv,
+            footer=(
+                "This is your initial state snapshot. In subsequent messages, "
+                "you will only receive updates for entities that changed state."
+            ),
+        )
 
         self._logger.debug(
             "MCP: Created initial state for conversation %s (%d entities)",
@@ -146,7 +148,8 @@ This is your initial state snapshot. In subsequent messages, you will only recei
         self,
         conversation_id: str,
         entities: list[dict[str, Any]],
-    ) -> Optional[str]:
+        base_prompt: str,
+    ) -> str:
         """
         Build delta prompt with only changed entities.
 
@@ -155,16 +158,17 @@ This is your initial state snapshot. In subsequent messages, you will only recei
             entities: Current entity list
 
         Returns:
-            Delta prompt if changes exist, None otherwise
+            Complete follow-up system prompt with delta context
         """
         if conversation_id not in self._conversations:
             self._logger.warning(
                 "MCP: Conversation %s not found, should use initial prompt",
                 conversation_id,
             )
-            return None
+            return self.build_initial_prompt(conversation_id, entities, base_prompt)
 
         stored_states = self._conversations[conversation_id]
+        now = datetime.now(timezone.utc)
 
         # Build current states
         current_states = {}
@@ -175,7 +179,7 @@ This is your initial state snapshot. In subsequent messages, you will only recei
                 state=e["state"],
                 area=e.get("area", ""),
                 aliases=e.get("aliases", []),
-                last_updated=datetime.now(timezone.utc).isoformat(),
+                last_updated=now.isoformat(),
             )
             current_states[e["entity_id"]] = state
 
@@ -203,16 +207,10 @@ This is your initial state snapshot. In subsequent messages, you will only recei
 
         # Update stored state
         self._conversations[conversation_id] = current_states
-        self._last_updated[conversation_id] = datetime.now(timezone.utc)
-
-        # Return None if no changes
-        if not changed and not new and not removed_ids:
-            return None
+        self._last_updated[conversation_id] = now
 
         # Build delta prompt
-        parts = [
-            f"**State Update** (Delta at {datetime.now(timezone.utc).isoformat()}):"
-        ]
+        parts = [f"**State Update** (Delta at {now.isoformat()}):"]
 
         if changed:
             parts.append(f"\nChanged entities ({len(changed)}):")
@@ -225,7 +223,20 @@ This is your initial state snapshot. In subsequent messages, you will only recei
         if removed_ids:
             parts.append(f"\nRemoved entities: {', '.join(sorted(removed_ids))}")
 
+        if not changed and not new and not removed_ids:
+            parts.append("\nNo entity state changes since the previous snapshot.")
+
+        parts.append(
+            "\nEntities not listed below are unchanged from the previous snapshot."
+        )
+
         delta = "\n".join(parts)
+        prompt = self._compose_prompt(
+            base_prompt=base_prompt,
+            state_header="**Entity State Information** (Delta Update):",
+            current_time=now.isoformat(),
+            body=delta,
+        )
 
         self._logger.debug(
             "MCP: Delta for conversation %s: %d changed, %d new, %d removed",
@@ -235,7 +246,28 @@ This is your initial state snapshot. In subsequent messages, you will only recei
             len(removed_ids),
         )
 
-        return delta
+        return prompt
+
+    @staticmethod
+    def _compose_prompt(
+        base_prompt: str,
+        state_header: str,
+        current_time: str,
+        body: str,
+        footer: str = "",
+    ) -> str:
+        """Compose a complete system prompt for an MCP turn."""
+        parts = [
+            base_prompt,
+            "",
+            state_header,
+            f"Current time: {current_time}",
+            "",
+            body,
+        ]
+        if footer:
+            parts.extend(["", footer])
+        return "\n".join(parts)
 
     @staticmethod
     def _format_entities_csv(states: list[EntityState]) -> str:
