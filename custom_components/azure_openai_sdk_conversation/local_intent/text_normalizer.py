@@ -192,9 +192,7 @@ class TextNormalizer:
             s = pattern.sub(replacement, s)
 
         # Always apply custom (user-configured) token synonyms
-        for source in sorted(
-            self._custom_token_synonyms.keys(), key=len, reverse=True
-        ):
+        for source in sorted(self._custom_token_synonyms.keys(), key=len, reverse=True):
             target = self._custom_token_synonyms[source]
             try:
                 s = re.sub(

@@ -128,7 +128,9 @@ class HAMCPStateManager:
                 "MCP: Conversation %s not found, should use initial prompt",
                 conversation_id,
             )
-            return self.get_initial_prompt(conversation_id, current_entities, base_prompt)
+            return self.get_initial_prompt(
+                conversation_id, current_entities, base_prompt
+            )
 
         stored_states = self._conversations[conversation_id]
         changed_entities: list[EntityState] = []

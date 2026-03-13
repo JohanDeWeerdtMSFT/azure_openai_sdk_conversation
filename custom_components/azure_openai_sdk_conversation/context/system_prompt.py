@@ -102,7 +102,9 @@ class SystemPromptBuilder:
                     )
                     prompt = await self._build_full_prompt(base_prompt, entities)
                 else:
-                    self._logger.debug("Built delta system prompt for conv=%s", conversation_id)
+                    self._logger.debug(
+                        "Built delta system prompt for conv=%s", conversation_id
+                    )
 
             return prompt
 
