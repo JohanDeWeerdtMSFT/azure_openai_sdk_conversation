@@ -77,7 +77,7 @@ class SystemPromptBuilder:
             is_initial = self._mcp.is_new_conversation(conversation_id)
 
             if is_initial:
-                # First message: full context
+                # First message: full context including all entity states
                 prompt = self._mcp.build_initial_prompt(
                     conversation_id=conversation_id,
                     entities=entities,
@@ -93,7 +93,16 @@ class SystemPromptBuilder:
                     entities=entities,
                     base_prompt=base_prompt,
                 )
-                self._logger.debug("Built delta system prompt")
+                if not prompt:
+                    # Conversation was not found in MCP state (e.g. TTL expired);
+                    # fall back to full context so entity resolution is never lost.
+                    self._logger.warning(
+                        "MCP delta returned None for conv=%s; falling back to full context",
+                        conversation_id,
+                    )
+                    prompt = await self._build_full_prompt(base_prompt, entities)
+                else:
+                    self._logger.debug("Built delta system prompt for conv=%s", conversation_id)
 
             return prompt
 
@@ -158,7 +167,19 @@ class SystemPromptBuilder:
             by_area[area].append(entity)
 
         # Build formatted string
-        lines = ["**Entity State Information**:"]
+        lines = [
+            "**Entity Resolution Rules** (STRICT - follow before every tool call):",
+            "1. Always look up the entity list below to find the exact `entity_id`.",
+            "2. Match the user's name or alias (e.g., 'desk lamp', 'the lamp') to the"
+            " `name` or `aliases` columns.",
+            "3. NEVER guess, invent, or hallucinate entity_ids.",
+            "4. Do NOT call any service tool until you have resolved the exact"
+            " entity_id from the list below.",
+            "5. If no matching entity is found, ask the user for clarification instead"
+            " of making a tool call.",
+            "",
+            "**Entity State Information**:",
+        ]
 
         for area in sorted(by_area.keys()):
             if area == "_no_area":

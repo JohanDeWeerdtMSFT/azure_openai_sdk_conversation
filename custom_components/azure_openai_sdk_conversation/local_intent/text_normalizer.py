@@ -41,6 +41,11 @@ class TextNormalizer:
         # Vocabulary data
         self._token_synonyms: dict[str, str] = {}
         self._regex_rules: list[tuple[re.Pattern, str]] = []
+        # Language-split vocabulary (populated by ensure_loaded)
+        self._default_token_synonyms: dict[str, str] = {}
+        self._default_regex_rules: list[tuple[re.Pattern, str]] = []
+        self._custom_token_synonyms: dict[str, str] = {}
+        self._custom_regex_rules: list[tuple[re.Pattern, str]] = []
         self._loaded = False
 
     async def ensure_loaded(self) -> None:
@@ -48,18 +53,16 @@ class TextNormalizer:
         if self._loaded:
             return
 
-        # Get default vocabulary
+        # Get default vocabulary (Italian-specific)
         vocab = self._get_default_vocabulary()
 
-        # Load custom synonyms file if configured
+        # Load custom synonyms file if configured (language-neutral)
+        custom_vocab: dict[str, Any] = {}
         if self._config.synonyms_file and os.path.isfile(self._config.synonyms_file):
             try:
                 custom_vocab = await self._load_synonyms_file(
                     self._config.synonyms_file
                 )
-                # Merge with default
-                vocab = self._merge_vocabularies(vocab, custom_vocab)
-
                 self._logger.info(
                     "Loaded custom synonyms from %s", self._config.synonyms_file
                 )
@@ -70,21 +73,23 @@ class TextNormalizer:
                     err,
                 )
 
-        # Build token synonyms map
-        self._token_synonyms = {}
+        # Build default token synonyms map (Italian-specific vocabulary)
+        self._default_token_synonyms: dict[str, str] = {}
         for source, target in vocab.get("token_synonyms", {}).items():
             if isinstance(source, str) and isinstance(target, str):
-                self._token_synonyms[source.strip().lower()] = target.strip().lower()
+                self._default_token_synonyms[source.strip().lower()] = (
+                    target.strip().lower()
+                )
 
-        # Compile regex rules
-        self._regex_rules = []
+        # Compile default regex rules (Italian-specific)
+        self._default_regex_rules: list[tuple[re.Pattern, str]] = []
         for rule in vocab.get("regex_rules", []):
             pattern = rule.get("pattern", "")
             replacement = rule.get("replace", "")
             if pattern and isinstance(pattern, str):
                 try:
                     compiled = re.compile(pattern, flags=re.IGNORECASE)
-                    self._regex_rules.append((compiled, replacement))
+                    self._default_regex_rules.append((compiled, replacement))
                 except re.error as rex:
                     self._logger.warning(
                         "Invalid regex pattern in vocabulary: %s (error: %s)",
@@ -92,19 +97,62 @@ class TextNormalizer:
                         rex,
                     )
 
+        # Build custom token synonyms map (user-configured, language-neutral)
+        self._custom_token_synonyms: dict[str, str] = {}
+        for source, target in custom_vocab.get("token_synonyms", {}).items():
+            if isinstance(source, str) and isinstance(target, str):
+                self._custom_token_synonyms[source.strip().lower()] = (
+                    target.strip().lower()
+                )
+
+        # Compile custom regex rules (user-configured, language-neutral)
+        self._custom_regex_rules: list[tuple[re.Pattern, str]] = []
+        for rule in custom_vocab.get("regex_rules", []):
+            pattern = rule.get("pattern", "")
+            replacement = rule.get("replace", "")
+            if pattern and isinstance(pattern, str):
+                try:
+                    compiled = re.compile(pattern, flags=re.IGNORECASE)
+                    self._custom_regex_rules.append((compiled, replacement))
+                except re.error as rex:
+                    self._logger.warning(
+                        "Invalid regex pattern in custom vocabulary: %s (error: %s)",
+                        pattern,
+                        rex,
+                    )
+
+        # Legacy: keep combined view for backward compat (Italian path)
+        self._token_synonyms = {
+            **self._default_token_synonyms,
+            **self._custom_token_synonyms,
+        }
+        self._regex_rules = self._default_regex_rules + self._custom_regex_rules
+
         self._loaded = True
         self._logger.debug(
-            "Vocabulary loaded: %d synonyms, %d regex rules",
-            len(self._token_synonyms),
-            len(self._regex_rules),
+            "Vocabulary loaded: %d default synonyms, %d custom synonyms, "
+            "%d default regex rules, %d custom regex rules",
+            len(self._default_token_synonyms),
+            len(self._custom_token_synonyms),
+            len(self._default_regex_rules),
+            len(self._custom_regex_rules),
         )
 
-    def normalize(self, text: str) -> str:
+    def normalize(self, text: str, language: str | None = None) -> str:
         """
         Normalize text using vocabulary rules.
 
+        The default vocabulary contains Italian-specific substitutions (e.g.,
+        ``"off" → "spegni"``).  When *language* is provided and is not Italian,
+        these default substitutions are skipped to prevent cross-language token
+        replacement.  User-configured custom vocabulary (``synonyms_file``) is
+        always applied regardless of language.
+
         Args:
             text: Raw user input
+            language: Optional BCP-47 language tag (e.g. ``"it"``, ``"en"``).
+                When *None* the method behaves as before (applies all rules) for
+                backward compatibility.
 
         Returns:
             Normalized text
@@ -114,15 +162,40 @@ class TextNormalizer:
 
         s = text.strip()
 
-        # Apply regex rules first
-        for pattern, replacement in self._regex_rules:
+        # Determine whether the default Italian vocabulary should be applied.
+        # When language is None we assume Italian for backward compatibility.
+        apply_default = (language is None) or language.lower().startswith("it")
+
+        if apply_default:
+            # Apply default (Italian) regex rules first
+            for pattern, replacement in self._default_regex_rules:
+                s = pattern.sub(replacement, s)
+
+            # Apply default (Italian) token synonyms
+            # Process longer phrases first to avoid partial matches
+            for source in sorted(
+                self._default_token_synonyms.keys(), key=len, reverse=True
+            ):
+                target = self._default_token_synonyms[source]
+                try:
+                    s = re.sub(
+                        rf"\b{re.escape(source)}\b",
+                        target,
+                        s,
+                        flags=re.IGNORECASE,
+                    )
+                except re.error:
+                    s = s.replace(source, target)
+
+        # Always apply custom (user-configured) regex rules
+        for pattern, replacement in self._custom_regex_rules:
             s = pattern.sub(replacement, s)
 
-        # Apply token synonyms (full-phrase substitutions)
-        # Process longer phrases first to avoid partial matches
-        for source in sorted(self._token_synonyms.keys(), key=len, reverse=True):
-            target = self._token_synonyms[source]
-            # Use word boundaries to avoid partial matches
+        # Always apply custom (user-configured) token synonyms
+        for source in sorted(
+            self._custom_token_synonyms.keys(), key=len, reverse=True
+        ):
+            target = self._custom_token_synonyms[source]
             try:
                 s = re.sub(
                     rf"\b{re.escape(source)}\b",
@@ -131,7 +204,6 @@ class TextNormalizer:
                     flags=re.IGNORECASE,
                 )
             except re.error:
-                # Fallback to simple replace if regex fails
                 s = s.replace(source, target)
 
         # Clean up multiple spaces
