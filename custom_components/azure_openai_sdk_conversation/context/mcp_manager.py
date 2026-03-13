@@ -8,6 +8,7 @@ sending only delta updates instead of full state every time.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -131,7 +132,8 @@ Current time: {datetime.now(timezone.utc).isoformat()}
 
 {entity_csv}
 
-This is your initial state snapshot. In subsequent messages, you will only receive updates for entities that changed state.
+This is your initial state snapshot. Subsequent messages will include the full entity map \
+(for name/alias resolution) plus any state changes since the previous turn.
 """
 
         self._logger.debug(
@@ -148,14 +150,18 @@ This is your initial state snapshot. In subsequent messages, you will only recei
         entities: list[dict[str, Any]],
     ) -> Optional[str]:
         """
-        Build delta prompt with only changed entities.
+        Build delta prompt with the full entity resolution map plus state changes.
+
+        The entity resolution map (entity_id, name, area, aliases) is ALWAYS
+        included so the model can reliably map user-supplied names and aliases to
+        entity_ids even when no state has changed since the last turn.
 
         Args:
             conversation_id: Conversation ID
             entities: Current entity list
 
         Returns:
-            Delta prompt if changes exist, None otherwise
+            Delta prompt string, or None if the conversation is unknown.
         """
         if conversation_id not in self._conversations:
             self._logger.warning(
@@ -182,7 +188,6 @@ This is your initial state snapshot. In subsequent messages, you will only recei
         # Find changes
         changed = []
         new = []
-        removed_ids = set()
 
         # Check for changes and new entities
         for entity_id, current in current_states.items():
@@ -205,25 +210,33 @@ This is your initial state snapshot. In subsequent messages, you will only recei
         self._conversations[conversation_id] = current_states
         self._last_updated[conversation_id] = datetime.now(timezone.utc)
 
-        # Return None if no changes
-        if not changed and not new and not removed_ids:
-            return None
+        # Always include the compact entity resolution map so the model can
+        # reliably resolve user-supplied names/aliases to entity_ids regardless
+        # of whether any state changed in this turn.
+        entity_map = self._format_entity_resolution_map(current_states.values())
 
-        # Build delta prompt
         parts = [
-            f"**State Update** (Delta at {datetime.now(timezone.utc).isoformat()}):"
+            f"**Context Update** (Turn at {datetime.now(timezone.utc).isoformat()}):",
+            "\n**Entity Map** (name/alias → entity_id reference; use this to resolve every request):",
+            entity_map,
         ]
 
-        if changed:
-            parts.append(f"\nChanged entities ({len(changed)}):")
-            parts.append(self._format_entities_csv(changed))
+        # Append state delta only when something actually changed
+        if changed or new or removed_ids:
+            parts.append("\n**State Changes Since Last Turn**:")
 
-        if new:
-            parts.append(f"\nNew entities ({len(new)}):")
-            parts.append(self._format_entities_csv(new))
+            if changed:
+                parts.append(f"\nChanged entities ({len(changed)}):")
+                parts.append(self._format_entities_csv(changed))
 
-        if removed_ids:
-            parts.append(f"\nRemoved entities: {', '.join(sorted(removed_ids))}")
+            if new:
+                parts.append(f"\nNew entities ({len(new)}):")
+                parts.append(self._format_entities_csv(new))
+
+            if removed_ids:
+                parts.append(f"\nRemoved entities: {', '.join(sorted(removed_ids))}")
+        else:
+            parts.append("\n**State Changes Since Last Turn**: None.")
 
         delta = "\n".join(parts)
 
@@ -238,7 +251,47 @@ This is your initial state snapshot. In subsequent messages, you will only recei
         return delta
 
     @staticmethod
-    def _format_entities_csv(states: list[EntityState]) -> str:
+    def _format_entity_resolution_map(states: Iterable[EntityState]) -> str:
+        """
+        Format a compact entity map for name/alias resolution.
+
+        Unlike _format_entities_csv this intentionally omits the current state
+        value, keeping the delta prompt focused on identification rather than
+        repeating state information (which is covered in the changes section).
+
+        Args:
+            states: Iterable of EntityState objects
+
+        Returns:
+            CSV-formatted entity map grouped by area
+        """
+        by_area: dict[str, list[EntityState]] = {}
+        for state in states:
+            area = state.area or "_no_area"
+            if area not in by_area:
+                by_area[area] = []
+            by_area[area].append(state)
+
+        lines = []
+        for area in sorted(by_area.keys()):
+            if area == "_no_area":
+                lines.append("\nEntities without area:")
+            else:
+                lines.append(f"\nEntities in: {area}")
+
+            lines.append("```csv")
+            lines.append("entity_id;name;aliases")
+
+            for s in sorted(by_area[area], key=lambda x: x.entity_id):
+                aliases_str = "/".join(s.aliases) if s.aliases else ""
+                lines.append(f"{s.entity_id};{s.name};{aliases_str}")
+
+            lines.append("```")
+
+        return "\n".join(lines) if lines else "No entities available."
+
+    @staticmethod
+    def _format_entities_csv(states: Iterable[EntityState]) -> str:
         """Format entities as CSV grouped by area."""
         # Group by area
         by_area: dict[str, list[EntityState]] = {}
