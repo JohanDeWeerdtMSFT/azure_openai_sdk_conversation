@@ -304,7 +304,14 @@ class ToolSchemaBuilder:
         if param_name == "entity_id":
             return {
                 "type": "string",
-                "description": "Entity ID (e.g., light.living_room)",
+                "description": (
+                    "The exact entity_id to control (e.g., 'light.living_room'). "
+                    "IMPORTANT: Before calling this tool, look up the entity list "
+                    "in the system prompt to find the entity_id that matches the "
+                    "user's name or alias (e.g., 'desk lamp' → 'light.desk'). "
+                    "Never guess or fabricate entity_ids. Only use entity_ids "
+                    "present in the provided entity list."
+                ),
             }
 
         # Unwrap validator if it's vol.All or similar
@@ -384,7 +391,14 @@ class ToolSchemaBuilder:
             "properties": {
                 "entity_id": {
                     "type": "string",
-                    "description": "The entity_id of the entity to control (e.g., 'light.living_room'). Can be a single ID or a list.",
+                    "description": (
+                        "The exact entity_id to control (e.g., 'light.living_room'). "
+                        "IMPORTANT: Before calling this tool, look up the entity list "
+                        "in the system prompt to find the entity_id that matches the "
+                        "user's name or alias (e.g., 'desk lamp' → 'light.desk'). "
+                        "Never guess or fabricate entity_ids. Only use entity_ids "
+                        "present in the provided entity list."
+                    ),
                 },
                 "device_id": {
                     "type": "string",

@@ -257,5 +257,72 @@ async def test_tool_manager_cache(mock_hass):
     assert len(tools3) > 0
 
 
+@pytest.mark.anyio
+async def test_entity_id_description_contains_alias_guidance(mock_hass):
+    """entity_id parameter descriptions must instruct alias-to-entity_id resolution."""
+    builder = ToolSchemaBuilder(mock_hass)
+    tools = await builder.build_all_tools(allowed_domains={"light"})
+
+    for tool in tools:
+        props = tool["function"]["parameters"].get("properties", {})
+        if "entity_id" in props:
+            desc = props["entity_id"]["description"].lower()
+            assert "alias" in desc or "name" in desc, (
+                f"entity_id description in {tool['function']['name']} must mention "
+                "name/alias lookup"
+            )
+            assert "never" in desc or "only use" in desc or "do not" in desc, (
+                f"entity_id description in {tool['function']['name']} must warn "
+                "against guessing/fabricating entity_ids"
+            )
+
+
+@pytest.mark.anyio
+async def test_entity_id_description_no_fabrication_warning(mock_hass):
+    """entity_id parameter description must warn against fabricating IDs."""
+    builder = ToolSchemaBuilder(mock_hass)
+    tools = await builder.build_all_tools(allowed_domains={"light"})
+
+    # Find light_turn_on (uses default parameters path with entity_id)
+    light_on = next(
+        (t for t in tools if t["function"]["name"] == "light_turn_on"), None
+    )
+    assert light_on is not None
+
+    props = light_on["function"]["parameters"].get("properties", {})
+    assert "entity_id" in props
+    desc = props["entity_id"]["description"]
+    # Must contain resolution instruction
+    assert "look up" in desc.lower() or "entity list" in desc.lower()
+    # Must warn against fabrication
+    assert "never" in desc.lower() or "only use" in desc.lower()
+
+
+@pytest.mark.anyio
+async def test_alias_resolution_desk_lamp_scenario(mock_hass):
+    """
+    Regression test: schema descriptions must guide the model to resolve
+    'desk lamp' to the correct entity_id via the alias/name columns.
+    """
+    builder = ToolSchemaBuilder(mock_hass)
+    tools = await builder.build_all_tools(allowed_domains={"light"})
+
+    # All tools targeting lights must carry proper entity_id guidance
+    for tool in tools:
+        if not tool["function"]["name"].startswith("light_"):
+            continue
+        props = tool["function"]["parameters"].get("properties", {})
+        if "entity_id" not in props:
+            continue
+        desc = props["entity_id"]["description"]
+        # Description should guide the model to look up by name/alias
+        assert any(
+            kw in desc.lower() for kw in ("alias", "name", "entity list", "look up")
+        ), (
+            f"{tool['function']['name']}: entity_id description must instruct "
+            "alias/name lookup"
+        )
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

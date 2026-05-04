@@ -51,6 +51,7 @@ from .const import (
     CONF_SLIDING_WINDOW_MAX_TOKENS,
     CONF_SLIDING_WINDOW_PRESERVE_SYSTEM,
     CONF_SLIDING_WINDOW_TOKEN_BUFFER,
+    SLIDING_WINDOW_MAX_TOKENS_UPPER_BOUND,
     CONF_SSL_VERIFY,
     CONF_STATS_AGGREGATED_FILE,
     CONF_STATS_AGGREGATION_INTERVAL,
@@ -566,7 +567,7 @@ class AzureOpenAIOptionsFlow(OptionsFlow):
                     ): NumberSelector(
                         NumberSelectorConfig(
                             min=1000,
-                            max=16000,
+                            max=SLIDING_WINDOW_MAX_TOKENS_UPPER_BOUND,
                             step=500,
                             mode="box",
                         )

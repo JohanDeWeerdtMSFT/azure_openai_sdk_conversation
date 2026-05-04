@@ -54,6 +54,7 @@ from .const import (
     CONF_SLIDING_WINDOW_ENABLE,
     CONF_SLIDING_WINDOW_MAX_TOKENS,
     CONF_SLIDING_WINDOW_PRESERVE_SYSTEM,
+    SLIDING_WINDOW_MAX_TOKENS_UPPER_BOUND,
     CONF_STATS_COMPONENT_LOG_PATH,
     # Statistics
     CONF_STATS_ENABLE,
@@ -369,7 +370,12 @@ class AzureOpenAIConfigFlow(ConfigFlow, domain=DOMAIN):
                     default=RECOMMENDED_SLIDING_WINDOW_MAX_TOKENS,
                 )
             ] = NumberSelector(
-                NumberSelectorConfig(min=1000, max=16000, step=500, mode="box")
+                NumberSelectorConfig(
+                    min=1000,
+                    max=SLIDING_WINDOW_MAX_TOKENS_UPPER_BOUND,
+                    step=500,
+                    mode="box",
+                )
             )
             cap_schema[
                 vol.Optional(

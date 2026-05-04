@@ -74,3 +74,15 @@ async def test_options_flow_init_strict(patch_options_flow):
 
     # Verify we manually set the config_entry (backing field)
     assert flow.config_entry == config_entry
+
+
+def test_sliding_window_max_tokens_upper_bound():
+    """Test that the sliding window max tokens upper bound is greater than 16000."""
+    from custom_components.azure_openai_sdk_conversation.const import (
+        SLIDING_WINDOW_MAX_TOKENS_UPPER_BOUND,
+    )
+
+    assert SLIDING_WINDOW_MAX_TOKENS_UPPER_BOUND > 16000, (
+        "SLIDING_WINDOW_MAX_TOKENS_UPPER_BOUND must be greater than 16000 "
+        "to allow valid configurations for models with large context windows."
+    )

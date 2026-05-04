@@ -23,6 +23,7 @@ def test_mcp_state_manager_initial_prompt():
     prompt = mgr.get_initial_prompt("conv1", entities, "Base prompt")
 
     assert "Base prompt" in prompt
+    assert "Current time:" in prompt
     assert "light.test" in prompt
     assert mgr.is_new_conversation("conv1") is False
 
@@ -40,12 +41,14 @@ def test_mcp_state_manager_delta_prompt():
     mgr.get_initial_prompt("conv1", entities, "Base prompt")
 
     # No change
-    delta = mgr.get_delta_prompt("conv1", entities)
-    assert delta is None
+    delta = mgr.get_delta_prompt("conv1", entities, "Base prompt")
+    assert "Base prompt" in delta
+    assert "Current time:" in delta
+    assert "No entity state changes since the previous snapshot." in delta
 
     # State change
     entities[0]["state"] = "on"
-    delta = mgr.get_delta_prompt("conv1", entities)
+    delta = mgr.get_delta_prompt("conv1", entities, "Base prompt")
     assert "Changed entities" in delta
     assert "light.test" in delta
     assert "on" in delta
@@ -56,7 +59,7 @@ def test_mcp_state_manager_new_entity():
     mgr.get_initial_prompt("conv1", [], "Base prompt")
 
     entities = [{"entity_id": "light.new", "name": "New Light", "state": "off"}]
-    delta = mgr.get_delta_prompt("conv1", entities)
+    delta = mgr.get_delta_prompt("conv1", entities, "Base prompt")
     assert "New entities" in delta
     assert "light.new" in delta
 
@@ -71,11 +74,15 @@ async def test_mcp_server_prepare_message():
 
     # Initial
     msg = server.prepare_system_message("conv1", entities, "Base")
+    assert "Base" in msg
+    assert "Current time:" in msg
     assert "Initial Full State" in msg
 
     # Delta (no change)
     msg = server.prepare_system_message("conv1", entities, "Base")
-    assert "No changes" in msg
+    assert "Base" in msg
+    assert "Current time:" in msg
+    assert "No entity state changes since the previous snapshot." in msg
 
 
 @pytest.mark.anyio
