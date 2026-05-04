@@ -20,6 +20,7 @@ from homeassistant.helpers.selector import (
     BooleanSelector,
     NumberSelector,
     NumberSelectorConfig,
+    PasswordSelector,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -259,7 +260,7 @@ class AzureOpenAIConfigFlow(ConfigFlow, domain=DOMAIN):
         cap_schema[
             vol.Optional(CONF_FOUNDRY_ENDPOINT, default=RECOMMENDED_FOUNDRY_ENDPOINT)
         ] = str
-        cap_schema[vol.Optional(CONF_FOUNDRY_API_KEY, default="")] = str
+        cap_schema[vol.Optional(CONF_FOUNDRY_API_KEY, default="")] = PasswordSelector()
         cap_schema[
             vol.Optional(CONF_FOUNDRY_TIMEOUT, default=RECOMMENDED_FOUNDRY_TIMEOUT)
         ] = NumberSelector(NumberSelectorConfig(min=5, max=300, step=5, mode="box"))
