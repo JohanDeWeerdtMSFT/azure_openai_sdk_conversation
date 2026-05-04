@@ -148,7 +148,7 @@ class FoundryResponsesClient:
         payload = {
             "input": messages,
             # tools field is optional; published agents may ignore it
-            # "tools": tools,
+            "tools": tools,
         }
 
         await self._logger.log_request(
