@@ -1,13 +1,11 @@
 # Azure OpenAI SDK Conversation
 
-[![Validate HACS](https://github.com/FoliniC/azure_openai_sdk_conversation/actions/workflows/validate_hacs.yml/badge.svg)](https://github.com/FoliniC/azure_openai_sdk_conversation/actions/workflows/validate_hacs.yml)
-[![Linting](https://github.com/FoliniC/azure_openai_sdk_conversation/actions/workflows/lint.yml/badge.svg)](https://github.com/FoliniC/azure_openai_sdk_conversation/actions/workflows/lint.yml)
-[![GitHub All Releases](https://img.shields.io/github/downloads/FoliniC/azure_openai_sdk_conversation/total)](https://github.com/FoliniC/azure_openai_sdk_conversation/releases)
-[![GitHub Sponsors](https://img.shields.io/github/sponsors/FoliniC?style=social)](https://github.com/sponsors/FoliniC)
-[![Buy me a glass of white wine](https://img.shields.io/badge/-%20buy%20me%20a%20glass%20of%20white%20wine-yellow?logo=buy-me-a-coffee)](https://buymeacoffee.com/carlofolinf)
+[![GitHub All Releases](https://img.shields.io/github/downloads/JohanDeWeerdtMSFT/azure_openai_sdk_conversation/total)](https://github.com/JohanDeWeerdtMSFT/azure_openai_sdk_conversation/releases)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
 
-This custom integration adds a conversation agent powered by Azure OpenAI in Home Assistant, based on the original OpenAI Conversation integration.
+> **📦 Repository Notice**: This is a maintained fork of [FoliniC/azure_openai_sdk_conversation](https://github.com/FoliniC/azure_openai_sdk_conversation) with **Microsoft Foundry Agent integration**. If you installed from the original repository, see [Migration Guide](#migration-from-folinic-repository) below.
+
+This custom integration adds a conversation agent powered by Azure OpenAI (or Microsoft Foundry) in Home Assistant, based on the original OpenAI Conversation integration.
 
 ## Features
 
@@ -22,6 +20,7 @@ This custom integration adds a conversation agent powered by Azure OpenAI in Hom
 *   **History**: Stores prompt history.
 *   **Web Search**: Optional Bing search integration for real-time information.
 *   **Flexible Configuration**: Configure and modify endpoint, model, and max tokens in the options UI.
+*   **Microsoft Foundry Integration** (v1.5.0+): Use published Foundry agents as an alternative LLM backend with true model abstraction and stateless multi-turn conversations.
 *   **Configurable Sliding Window**: Implemented a configurable sliding window for managing request/response history. This provides a balance between context preservation and resource constraints, ensuring recent messages are always available to the LLM while managing memory efficiently with token limits. It includes user-adjustable window size, ability to reset the conversation context, and support for tagged context for different purposes.
 *   **General Stability & Bug Fixes**: Numerous improvements for a more stable and reliable experience.
 
@@ -44,11 +43,74 @@ Starting with version 0.4, this integration uses an intermediary "MCP (Master Co
 
 ## Installation
 
-Install from HACS by adding this GitHub repository (`https://github.com/FoliniC/azure_openai_sdk_conversation`) as a custom repository.
+### New Installation
+
+Install from HACS by adding this repository as a **custom repository**:
+
+1. **Home Assistant** → **Settings** → **Devices & Services** → **HACS**
+2. Click **⋮ (menu)** → **Custom repositories**
+3. **Add repository**: `https://github.com/JohanDeWeerdtMSFT/azure_openai_sdk_conversation`
+4. Select **Category**: `Integration`
+5. **Search** for "Azure OpenAI SDK Conversation" → **Install**
+
+### Migration from FoliniC Repository
+
+If you previously installed from the original FoliniC repository, follow these steps to migrate to this maintained fork with Foundry support:
+
+#### Step 1: Remove Old HACS Source (Optional)
+1. **Home Assistant** → **Settings** → **Devices & Services** → **HACS**
+2. Find **Custom repositories** section
+3. If `https://github.com/FoliniC/azure_openai_sdk_conversation` is listed, remove it
+
+#### Step 2: Add New HACS Source
+1. **Home Assistant** → **Settings** → **Devices & Services** → **HACS**
+2. Click **⋮ (menu)** → **Custom repositories**
+3. **Add repository**: `https://github.com/JohanDeWeerdtMSFT/azure_openai_sdk_conversation`
+4. Select **Category**: `Integration`
+
+#### Step 3: Update Integration
+1. **Home Assistant** → **Settings** → **Devices & Services** → **Installed integrations**
+2. Find **Azure OpenAI SDK Conversation**
+3. Click **⋮ (menu)** → **Check for updates**
+4. If v1.5.0+ is available, click **Upgrade**
+
+**✅ Your existing configuration is preserved** — no setup changes needed!
 
 ## Configuration
 
 Configuration can be changed in the integration's options page after it has been added.
+
+### LLM Backend Selection
+
+Starting with **v1.5.0**, you can choose your LLM backend:
+
+- **Auto** (default): Tries Foundry first, falls back to Azure OpenAI if Foundry is unavailable
+- **Azure OpenAI**: Uses direct Azure OpenAI API (original behavior)
+- **Foundry**: Requires a Microsoft Foundry Published Agent endpoint
+
+#### Using Microsoft Foundry (v1.5.0+)
+
+To enable Foundry:
+
+1. **Obtain Foundry Endpoint & API Key**:
+   - Go to **Azure Portal** → Your **Foundry resource**
+   - Navigate to **Keys** → Copy your **API key**
+   - Navigate to your **Published Agent Application** → Copy the **Responses API endpoint** URL
+
+2. **Configure in Home Assistant**:
+   - **Home Assistant** → **Settings** → **Devices & Services**
+   - Find your **Azure OpenAI SDK Conversation** instance → **Options**
+   - **LLM Backend**: Select `Foundry`
+   - **Foundry Endpoint**: Paste the full endpoint URL
+   - **Foundry API Key**: Paste your API key
+   - **Foundry Request Timeout**: Set timeout (default 30 seconds)
+   - **Save**
+
+3. **Test the Connection**:
+   - Use your Home Assistant conversation to test — it will now use Foundry
+   - Check logs for any auth or endpoint errors
+
+**💡 Tip**: Use "auto" backend if you want seamless fallback to Azure when Foundry is unavailable.
 
 ### Global Settings
 
@@ -180,8 +242,21 @@ This means that the initial prompt, which includes your system message and the d
 - gpt-5
 - grok-3
 - o1
-- gpt-4o-mini
+- gpt-4o (Foundry default)
+- gpt-4o-mini (recommended for cost optimization)
 
-## Support
+## Documentation
 
-If you find this integration useful, you can [buy me a glass of white wine](https://buymeacoffee.com/carlofolinf).
+For detailed architecture, deployment, and troubleshooting information, see:
+- [AGENTS.md](AGENTS.md) — Complete developer guide and Foundry integration details
+- [docs/architecture_overview.md](docs/architecture_overview.md) — System architecture
+- [docs/stateless_llm_context_handling.md](docs/stateless_llm_context_handling.md) — Context management
+
+## Contributing
+
+Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Support & Attribution
+
+- **Original Author**: [FoliniC](https://github.com/FoliniC) — [Buy me a glass of white wine](https://buymeacoffee.com/carlofolinf)
+- **Foundry Integration Fork**: [JohanDeWeerdtMSFT](https://github.com/JohanDeWeerdtMSFT)

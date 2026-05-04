@@ -1,5 +1,60 @@
 # CHANGELOG – Azure OpenAI SDK Conversation
 
+## 1.5.0 - 2026-05-04
+
+### 🔀 Repository Migration Notice
+
+**⚠️ This release is published from a maintained fork**: [JohanDeWeerdtMSFT/azure_openai_sdk_conversation](https://github.com/JohanDeWeerdtMSFT/azure_openai_sdk_conversation)
+
+If you installed from the original [FoliniC/azure_openai_sdk_conversation](https://github.com/FoliniC/azure_openai_sdk_conversation), you must manually add this repository as a custom HACS source to receive future updates. See [Migration Guide in README.md](README.md#migration-from-folinic-repository) for step-by-step instructions.
+
+**Your existing Home Assistant configuration is not affected** — no reconfiguration needed after updating.
+
+### ✨ New Features
+
+- **Microsoft Foundry Agent Integration**: Use published Foundry agents as an alternative LLM backend
+  - Responses API endpoint support (stateless, client-side history replay)
+  - Published agent model abstraction (no runtime model parameter needed)
+  - httpx-based HTTP client (ARM Windows compatible, no C++ compilation)
+- **LLM Backend Selector**: Choose between auto/azure/foundry backends
+  - Auto mode: Tries Foundry first, falls back to Azure OpenAI
+  - Foundry mode: Requires Foundry Published Agent endpoint and API key
+  - Azure mode: Direct Azure OpenAI only (original behavior)
+- **Foundry Configuration Options**:
+  - Endpoint URL configuration
+  - API key authentication (with Entra bearer token fallback support)
+  - Request timeout tuning (5-300 seconds)
+- **Enhanced Config UI**: Improved Foundry field descriptions and validation hints
+
+### 🧪 Validation & Testing
+
+Phase 1 validation completed against real Foundry endpoint:
+- ✅ Weather queries: 9.8s (84 tokens)
+- ✅ Entity control: 5.5s (49 tokens)
+- ✅ Ambiguity resolution (2-turn): 8.6s (108 tokens)
+- ✅ Multi-turn conversations (3-turn): 16.9s (300 tokens)
+- 🛡️ Safety gates: Correctly rejected jailbreak attempts
+
+### 📊 Cost Optimization
+
+Foundry infrastructure ~$30-50/month (within $100/month Azure budget cap). Recommended models:
+- gpt-4o-mini (default, cost-optimized)
+- gpt-4o (if available)
+
+### 🔧 Backward Compatibility
+
+✅ **Fully backward compatible** — existing Azure OpenAI configurations continue unchanged. New Foundry options are optional.
+
+### 📚 Documentation
+
+See [AGENTS.md](AGENTS.md) for:
+- Complete Foundry integration architecture
+- Phase 1 validation results
+- Deployment and configuration guide
+- Azure Entra ID RBAC requirements
+
+---
+
 ## 1.3.0 - 2026-01-06
 
 ### Bug Fixes
