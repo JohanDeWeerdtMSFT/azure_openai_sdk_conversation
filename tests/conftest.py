@@ -14,6 +14,104 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 sys.path.insert(0, os.path.join(project_root, "custom_components"))
 
+# Mock homeassistant before any imports (for local testing without HA installed)
+from unittest.mock import MagicMock  # noqa: E402
+import types  # noqa: E402
+
+class MockModule(types.ModuleType):
+    """A module that returns MagicMocks for any attribute access."""
+    
+    def __getattr__(self, name):
+        if name.startswith('_'):
+            raise AttributeError(f"module {self.__name__!r} has no attribute {name!r}")
+        # Return a new mock for any attribute access
+        mock = MagicMock()
+        setattr(self, name, mock)
+        return mock
+
+def install_homeassistant_mocks():
+    """Install comprehensive homeassistant mocks for local testing."""
+    # List of all homeassistant modules we want to mock
+    modules_to_mock = [
+        "homeassistant",
+        "homeassistant.const",
+        "homeassistant.core",
+        "homeassistant.components",
+        "homeassistant.components.conversation",
+        "homeassistant.config_entries",
+        "homeassistant.exceptions",
+        "homeassistant.helpers",
+        "homeassistant.helpers.config_validation",
+        "homeassistant.helpers.httpx_client",
+        "homeassistant.helpers.selector",
+        "homeassistant.helpers.typing",
+        "homeassistant.helpers.llm",
+        "homeassistant.util",
+        "homeassistant.util.logging",
+    ]
+    
+    # Create and register mock modules
+    for module_name in modules_to_mock:
+        mock = MockModule(module_name)
+        sys.modules[module_name] = mock
+
+install_homeassistant_mocks()
+
+# Now safe to import local modules
+from unittest.mock import AsyncMock  # noqa: E402
+
+# Ensure some common HA exports are available
+from homeassistant import const  # noqa: E402
+const.CONF_API_KEY = "api_key"
+const.Platform = "conversation"
+
+# Handle Platform enum-like behavior
+class PlatformMock:
+    CONVERSATION = "conversation"
+
+const.Platform = PlatformMock
+
+# Mock config_validation functions
+from homeassistant.helpers import config_validation  # noqa: E402
+config_validation.boolean = lambda x: bool(x)
+config_validation.string = lambda x: str(x)
+config_validation.positive_int = lambda x: int(x)
+
+# Mock get_async_client
+from homeassistant.helpers import httpx_client  # noqa: E402
+httpx_client.get_async_client = MagicMock(return_value=MagicMock())
+
+# Mock exceptions
+from homeassistant import exceptions  # noqa: E402
+exceptions.ConfigEntryNotReady = Exception
+
+# Mock typing
+from homeassistant.helpers import typing  # noqa: E402
+typing.ConfigType = dict
+
+# Mock conversation component
+from homeassistant.components import conversation  # noqa: E402
+conversation.ConversationEntity = object
+conversation.AbstractConversationAgent = object
+
+# Mock llm helpers
+from homeassistant.helpers import llm  # noqa: E402
+llm.LLMContext = MagicMock
+
+# Mock core
+from homeassistant import core  # noqa: E402
+core.HomeAssistant = MagicMock
+core.callback = lambda x: x
+core.Event = MagicMock
+core.EventOrigin = MagicMock()
+
+# Override Platform for config_entries
+from homeassistant.config_entries import ConfigEntry  # noqa: E402
+ConfigEntry.platform = "conversation"
+
+# Now safe to import the original conftest imports
+# Remove the local import that we added:
+
 # -----------------------------------------------------------------------------
 # 2. Imports (Now safe to import local modules)
 # -----------------------------------------------------------------------------
