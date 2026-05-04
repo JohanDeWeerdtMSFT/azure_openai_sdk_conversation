@@ -31,12 +31,20 @@ from .const import (
     CONF_API_BASE,
     CONF_API_VERSION,
     CONF_CHAT_MODEL,
+    BACKEND_AUTO,
+    BACKEND_AZURE,
+    BACKEND_FOUNDRY,
     # Early wait + vocabulary + utterances
     CONF_EARLY_WAIT_ENABLE,
     CONF_EARLY_WAIT_SECONDS,
     CONF_EXPOSED_ENTITIES_LIMIT,
+    CONF_FOUNDRY_API_KEY,
+    CONF_FOUNDRY_ENABLED,
+    CONF_FOUNDRY_ENDPOINT,
+    CONF_FOUNDRY_TIMEOUT,
     CONF_LOCAL_INTENT_ENABLE,
     # Logging
+    CONF_LLM_BACKEND,
     CONF_LOG_LEVEL,
     CONF_LOG_MAX_PAYLOAD_CHARS,
     CONF_LOG_MAX_SSE_LINES,
@@ -80,6 +88,10 @@ from .const import (
     RECOMMENDED_EARLY_WAIT_ENABLE,
     RECOMMENDED_EARLY_WAIT_SECONDS,
     RECOMMENDED_EXPOSED_ENTITIES_LIMIT,
+    RECOMMENDED_FOUNDRY_ENABLED,
+    RECOMMENDED_FOUNDRY_ENDPOINT,
+    RECOMMENDED_FOUNDRY_TIMEOUT,
+    RECOMMENDED_LLM_BACKEND,
     RECOMMENDED_LOCAL_INTENT_ENABLE,
     RECOMMENDED_MAX_TOKENS,
     RECOMMENDED_MCP_ENABLED,
@@ -233,6 +245,26 @@ class AzureOpenAIConfigFlow(ConfigFlow, domain=DOMAIN):
                 cap_schema[vol.Optional(name, default=default)] = str
 
         # 2) Logging options
+        cap_schema[vol.Optional(CONF_LLM_BACKEND, default=RECOMMENDED_LLM_BACKEND)] = (
+            SelectSelector(
+                SelectSelectorConfig(
+                    options=[BACKEND_AUTO, BACKEND_AZURE, BACKEND_FOUNDRY],
+                    mode=SelectSelectorMode.DROPDOWN,
+                )
+            )
+        )
+        cap_schema[
+            vol.Optional(CONF_FOUNDRY_ENABLED, default=RECOMMENDED_FOUNDRY_ENABLED)
+        ] = BooleanSelector()
+        cap_schema[
+            vol.Optional(CONF_FOUNDRY_ENDPOINT, default=RECOMMENDED_FOUNDRY_ENDPOINT)
+        ] = str
+        cap_schema[vol.Optional(CONF_FOUNDRY_API_KEY, default="")] = str
+        cap_schema[
+            vol.Optional(CONF_FOUNDRY_TIMEOUT, default=RECOMMENDED_FOUNDRY_TIMEOUT)
+        ] = NumberSelector(NumberSelectorConfig(min=5, max=300, step=5, mode="box"))
+
+        # 3) Logging options
         cap_schema[vol.Optional(CONF_LOG_LEVEL, default=DEFAULT_LOG_LEVEL)] = (
             SelectSelector(
                 SelectSelectorConfig(
@@ -447,6 +479,11 @@ class AzureOpenAIConfigFlow(ConfigFlow, domain=DOMAIN):
             "token_param": chat_token_param,
             CONF_API_VERSION: api_version,
             CONF_EXPOSED_ENTITIES_LIMIT: RECOMMENDED_EXPOSED_ENTITIES_LIMIT,
+            CONF_LLM_BACKEND: RECOMMENDED_LLM_BACKEND,
+            CONF_FOUNDRY_ENABLED: RECOMMENDED_FOUNDRY_ENABLED,
+            CONF_FOUNDRY_ENDPOINT: RECOMMENDED_FOUNDRY_ENDPOINT,
+            CONF_FOUNDRY_API_KEY: "",
+            CONF_FOUNDRY_TIMEOUT: RECOMMENDED_FOUNDRY_TIMEOUT,
             # logging defaults
             CONF_LOG_LEVEL: DEFAULT_LOG_LEVEL,
             CONF_LOG_PAYLOAD_REQUEST: False,

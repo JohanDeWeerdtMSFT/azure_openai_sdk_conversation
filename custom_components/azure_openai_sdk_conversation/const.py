@@ -22,6 +22,18 @@ CONF_TOKEN_PARAM: Final[str] = "token_param"
 CONF_SYSTEM_PROMPT: Final[str] = "system_prompt"
 CONF_PROMPT: Final[str] = "prompt"
 
+# Backend routing
+CONF_LLM_BACKEND: Final[str] = "llm_backend"
+BACKEND_AUTO: Final[str] = "auto"
+BACKEND_AZURE: Final[str] = "azure"
+BACKEND_FOUNDRY: Final[str] = "foundry"
+
+# Foundry settings
+CONF_FOUNDRY_ENABLED: Final[str] = "foundry_enabled"
+CONF_FOUNDRY_ENDPOINT: Final[str] = "foundry_endpoint"
+CONF_FOUNDRY_API_KEY: Final[str] = "foundry_api_key"
+CONF_FOUNDRY_TIMEOUT: Final[str] = "foundry_timeout"
+
 # Model parameters
 CONF_TEMPERATURE: Final[str] = "temperature"
 CONF_TOP_P: Final[str] = "top_p"
@@ -155,6 +167,11 @@ RECOMMENDED_MAX_TOKENS: Final[int] = 512
 RECOMMENDED_API_TIMEOUT: Final[int] = 30
 RECOMMENDED_REASONING_EFFORT: Final[str] = "medium"
 RECOMMENDED_EXPOSED_ENTITIES_LIMIT: Final[int] = 500
+RECOMMENDED_LLM_BACKEND: Final[str] = BACKEND_AUTO
+
+RECOMMENDED_FOUNDRY_ENABLED: Final[bool] = False
+RECOMMENDED_FOUNDRY_ENDPOINT: Final[str] = ""
+RECOMMENDED_FOUNDRY_TIMEOUT: Final[int] = 30
 
 RECOMMENDED_WEB_SEARCH: Final[bool] = False
 RECOMMENDED_WEB_SEARCH_CONTEXT_SIZE: Final[int] = 2000
@@ -200,6 +217,14 @@ __all__ = [
     "CONF_TOKEN_PARAM",
     "CONF_SYSTEM_PROMPT",
     "CONF_PROMPT",
+    "CONF_LLM_BACKEND",
+    "BACKEND_AUTO",
+    "BACKEND_AZURE",
+    "BACKEND_FOUNDRY",
+    "CONF_FOUNDRY_ENABLED",
+    "CONF_FOUNDRY_ENDPOINT",
+    "CONF_FOUNDRY_API_KEY",
+    "CONF_FOUNDRY_TIMEOUT",
     "CONF_TEMPERATURE",
     "CONF_TOP_P",
     "CONF_MAX_TOKENS",
@@ -273,6 +298,10 @@ __all__ = [
     "RECOMMENDED_API_TIMEOUT",
     "RECOMMENDED_REASONING_EFFORT",
     "RECOMMENDED_EXPOSED_ENTITIES_LIMIT",
+    "RECOMMENDED_LLM_BACKEND",
+    "RECOMMENDED_FOUNDRY_ENABLED",
+    "RECOMMENDED_FOUNDRY_ENDPOINT",
+    "RECOMMENDED_FOUNDRY_TIMEOUT",
     "RECOMMENDED_WEB_SEARCH",
     "RECOMMENDED_WEB_SEARCH_CONTEXT_SIZE",
     "RECOMMENDED_WEB_SEARCH_USER_LOCATION",

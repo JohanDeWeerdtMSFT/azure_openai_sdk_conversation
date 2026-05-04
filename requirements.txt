@@ -1,2 +1,14 @@
 openai==1.76.2
 tiktoken>=0.5.0
+httpx>=0.28.1
+azure-identity>=1.14.0
+
+# Foundry Agent Service (published endpoint validation)
+# Choose ONE approach:
+# 1. httpx (Recommended for ARM Windows): Use direct HTTP calls, no SDK dependency
+#    - Lightweight, no C++ compilation needed
+#    - Works on ARM Windows without MSVC
+# 2. agent-framework (Full SDK): Microsoft Agent Framework
+#    - Note: Requires MSVC compiler for gRPC/httptools (not available on ARM Windows)
+#    - Uncomment line below if MSVC is installed:
+# agent-framework>=2.1.0

@@ -29,6 +29,7 @@ from homeassistant.helpers import intent as intent_helper
 from ..context.conversation_memory import ConversationMemoryManager
 from ..context.system_prompt import SystemPromptBuilder
 from ..llm.chat_client import ChatClient
+from ..llm.foundry_responses_client import FoundryResponsesClient
 from ..llm.responses_client import ResponsesClient
 from ..local_intent.local_handler import LocalIntentHandler
 from ..stats.manager import StatsManager
@@ -57,6 +58,7 @@ class AzureOpenAIConversationAgent(AbstractConversationAgent):
         # Initialize LLM clients
         self._chat_client: Optional[ChatClient] = None
         self._responses_client: Optional[ResponsesClient] = None
+        self._foundry_client: Optional[FoundryResponsesClient] = None
         self._init_llm_clients()
 
         # Initialize conversation memory manager (NUOVO)
@@ -128,6 +130,14 @@ class AzureOpenAIConversationAgent(AbstractConversationAgent):
 
     def _init_llm_clients(self) -> None:
         """Initialize LLM clients based on configuration."""
+        # Foundry published agent Responses API client (optional)
+        if self._config.foundry_enabled and self._config.foundry_endpoint:
+            self._foundry_client = FoundryResponsesClient(
+                hass=self._hass,
+                config=self._config,
+                logger=self._logger,
+            )
+
         # Chat Completions client (always available)
         self._chat_client = ChatClient(
             hass=self._hass,
@@ -155,6 +165,32 @@ class AzureOpenAIConversationAgent(AbstractConversationAgent):
             # Use Responses for o-series models
             model = self._config.chat_model.lower()
             return model.startswith("o")
+
+    def _select_llm_client(self) -> tuple[Any, str, bool]:
+        """Select LLM client based on backend preference with safe fallback."""
+        backend_pref = (self._config.llm_backend or "auto").lower()
+
+        # Foundry requested explicitly
+        if backend_pref == "foundry":
+            if self._foundry_client:
+                return self._foundry_client, "llm_foundry", False
+
+            self._logger.warning(
+                "Foundry backend requested but not configured; falling back to Azure backend"
+            )
+
+        # Auto mode prefers Foundry when enabled/configured
+        if backend_pref == "auto" and self._foundry_client:
+            return self._foundry_client, "llm_foundry", False
+
+        # Azure path (responses/chat)
+        use_responses = self._should_use_responses()
+        client = self._responses_client if use_responses else self._chat_client
+        if not client:
+            raise RuntimeError("No LLM client available")
+
+        handler = "llm_responses" if use_responses else "llm_chat"
+        return client, handler, use_responses
 
     @property
     def supported_languages(self) -> list[str]:
@@ -371,12 +407,21 @@ class AzureOpenAIConversationAgent(AbstractConversationAgent):
         conv_id = user_input.conversation_id
         language = getattr(user_input, "language", None)
 
-        # Determine which API to use
-        use_responses = self._should_use_responses()
-        client = self._responses_client if use_responses else self._chat_client
+        # Determine which backend/API to use
+        client, handler_name, use_responses = self._select_llm_client()
 
-        if not client:
-            raise RuntimeError("No LLM client available")
+        using_foundry = handler_name == "llm_foundry"
+        fallback_client = None
+        fallback_handler = ""
+
+        if using_foundry:
+            fallback_use_responses = self._should_use_responses()
+            fallback_client = (
+                self._responses_client if fallback_use_responses else self._chat_client
+            )
+            fallback_handler = (
+                "llm_responses" if fallback_use_responses else "llm_chat"
+            )
 
         # One-time calculation of tool tokens, if needed
         if (
@@ -415,11 +460,60 @@ class AzureOpenAIConversationAgent(AbstractConversationAgent):
                 # Set to True even on failure to avoid retrying every time
                 self._base_tool_tokens_calculated = True
 
-        # Update metrics
-        metrics.handler = "llm_responses" if use_responses else "llm_chat"
-        metrics.model = self._config.chat_model
-        metrics.api_version = client.effective_api_version
-        metrics.temperature = self._config.temperature
+        async def _execute_with_client(
+            run_client: Any,
+            run_handler: str,
+        ) -> ConversationResult:
+            # Update metrics for selected runtime client
+            metrics.handler = run_handler
+            metrics.model = self._config.chat_model
+            metrics.api_version = run_client.effective_api_version
+            metrics.temperature = self._config.temperature
+
+            # Use ToolManager if enabled
+            if self._config.tools_enable and self._tool_manager:
+                tool_loop_result = await self._tool_manager.process_tool_loop(
+                    initial_messages=messages,
+                    llm_client=run_client,
+                    max_iterations=self._config.tools_max_iterations,
+                    conversation_id=conv_id,
+                    user_message=normalized_text,
+                    track_callback=track_first_chunk,
+                )
+                text_out = tool_loop_result.get("text", "")
+                return self._create_result(
+                    conversation_id=conv_id,
+                    language=language,
+                    text=text_out,
+                )
+
+            # Execute LLM call with early timeout if enabled
+            if self._config.early_wait_enable and self._config.early_wait_seconds > 0:
+                return await self._execute_with_early_timeout(
+                    client=run_client,
+                    messages=messages,
+                    conv_id=conv_id,
+                    language=language,
+                    metrics=metrics,
+                    track_callback=track_first_chunk,
+                    normalized_text=normalized_text,
+                )
+
+            # Execute directly
+            text_out, token_counts = await run_client.complete(
+                messages=messages,
+                conversation_id=conv_id,
+                user_message=normalized_text,
+                track_callback=track_first_chunk,
+            )
+            metrics.prompt_tokens = token_counts.get("prompt", 0)
+            metrics.completion_tokens = token_counts.get("completion", 0)
+            metrics.total_tokens = token_counts.get("total", 0)
+            return self._create_result(
+                conversation_id=conv_id,
+                language=language,
+                text=text_out,
+            )
 
         # MODIFICATO: Build messages with sliding window
         if self._memory and conv_id:
@@ -459,48 +553,18 @@ class AzureOpenAIConversationAgent(AbstractConversationAgent):
                 first_chunk_tracked = True
                 metrics.first_chunk_time_ms = (time.perf_counter() - start_time) * 1000
 
-        # Use ToolManager if enabled
-        if self._config.tools_enable and self._tool_manager:
-            tool_loop_result = await self._tool_manager.process_tool_loop(
-                initial_messages=messages,
-                llm_client=client,
-                max_iterations=self._config.tools_max_iterations,
-                conversation_id=conv_id,
-                user_message=normalized_text,
-                track_callback=track_first_chunk,
-            )
-            text_out = tool_loop_result.get("text", "")
-            result = self._create_result(
-                conversation_id=conv_id, language=language, text=text_out
-            )
-            # TODO: Handle token counts from tool loop
-        else:
-            # Execute LLM call with early timeout if enabled
-            if self._config.early_wait_enable and self._config.early_wait_seconds > 0:
-                result = await self._execute_with_early_timeout(
-                    client=client,
-                    messages=messages,
-                    conv_id=conv_id,
-                    language=language,
-                    metrics=metrics,
-                    track_callback=track_first_chunk,
-                    normalized_text=normalized_text,
+        try:
+            result = await _execute_with_client(client, handler_name)
+        except Exception as err:
+            if using_foundry and fallback_client is not None:
+                self._logger.warning(
+                    "Foundry backend failed (%r). Falling back to %s.",
+                    err,
+                    fallback_handler,
                 )
+                result = await _execute_with_client(fallback_client, fallback_handler)
             else:
-                # Execute directly
-                text_out, token_counts = await client.complete(
-                    messages=messages,
-                    conversation_id=conv_id,
-                    user_message=normalized_text,
-                    track_callback=track_first_chunk,
-                )
-                result = self._create_result(
-                    conversation_id=conv_id, language=language, text=text_out
-                )
-                # Update metrics
-                metrics.prompt_tokens = token_counts.get("prompt", 0)
-                metrics.completion_tokens = token_counts.get("completion", 0)
-                metrics.total_tokens = token_counts.get("total", 0)
+                raise
 
         # NUOVO: Add assistant response to sliding window
         if self._memory and conv_id:

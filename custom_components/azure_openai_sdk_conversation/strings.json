@@ -40,7 +40,12 @@
             "tools_parallel_execution": "Enable Parallel Tool Execution",
             "sliding_window_enable": "Enable Sliding Window",
             "sliding_window_max_tokens": "Sliding Window Max Tokens",
-            "sliding_window_preserve_system": "Preserve System Prompt in Window"
+            "sliding_window_preserve_system": "Preserve System Prompt in Window",
+            "llm_backend": "LLM Backend Selection",
+            "foundry_enabled": "Enable Microsoft Foundry",
+            "foundry_endpoint": "Foundry Published Agent Endpoint",
+            "foundry_api_key": "Foundry API Key",
+            "foundry_timeout": "Foundry Request Timeout (seconds)"
         }
       }
     },
@@ -100,7 +105,12 @@
           "tools_whitelist": "Tools Whitelist",
           "tools_max_iterations": "Max Tool Iterations",
           "tools_max_calls_per_minute": "Max Tool Calls Per Minute",
-          "tools_parallel_execution": "Enable Parallel Tool Execution"
+          "tools_parallel_execution": "Enable Parallel Tool Execution",
+          "llm_backend": "LLM Backend Selection",
+          "foundry_enabled": "Enable Microsoft Foundry",
+          "foundry_endpoint": "Foundry Published Agent Endpoint",
+          "foundry_api_key": "Foundry API Key",
+          "foundry_timeout": "Foundry Request Timeout (seconds)"
         },
         "data_description": {
           "prompt": "Instruct how the LLM should respond. This can be a template.",
@@ -124,7 +134,12 @@
           "sliding_window_enable": "Maintain a rolling window of conversation history within token limits.",
           "sliding_window_max_tokens": "Maximum tokens to use for history before truncating.",
           "sliding_window_preserve_system": "Always keep the system prompt when truncating history.",
-          "sliding_window_token_buffer": "Buffer to reserve to avoid hitting exact token limits."
+          "sliding_window_token_buffer": "Buffer to reserve to avoid hitting exact token limits.",
+          "llm_backend": "Choose your LLM backend: auto-select the best available, force Azure OpenAI only, or require Microsoft Foundry agent.",
+          "foundry_enabled": "Enable Microsoft Foundry Published Agent integration. Requires foundry_endpoint and foundry_api_key.",
+          "foundry_endpoint": "Full URL to your Foundry Published Agent Responses endpoint (e.g., https://resource.services.ai.azure.com/api/projects/project/applications/agent/protocols/openai/responses?api-version=2025-11-15-preview)",
+          "foundry_api_key": "API key for Foundry agent authentication. Obtain from Azure Portal → Foundry resource → Keys. Leave empty to use Entra authentication instead.",
+          "foundry_timeout": "Maximum time in seconds to wait for Foundry agent responses. Increase if agent is timing out frequently."
         }
       }
     },

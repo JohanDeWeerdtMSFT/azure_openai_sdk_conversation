@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-05-04T20:32:42.126594",
+  "endpoint": "https://hafoundryproject-resource.services.ai.azure.com/api/projects/hafoundryproject/applications/myFirstAgent/protocols/openai/responses?api-version=2025-11-15-preview",
+  "scenarios_run": 1,
+  "passed": 0,
+  "failed": 1,
+  "average_latency_ms": 0.0,
+  "total_tokens": 0,
+  "results": [
+    {
+      "scenario_name": "cover",
+      "request_text": "Can you open the Masterbed Groot blind for me?",
+      "success": false,
+      "latency_ms": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "total_tokens": 0,
+      "output_text": "",
+      "tool_calls": [],
+      "error": "'list' object has no attribute 'get'",
+      "multi_turn_depth": 1
+    }
+  ]
+}

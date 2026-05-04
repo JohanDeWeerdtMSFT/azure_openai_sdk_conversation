@@ -67,6 +67,15 @@ class AgentConfig:
     # Responses API mode (auto | chat | responses)
     force_responses_mode: str = "auto"
 
+    # Backend routing (auto | azure | foundry)
+    llm_backend: str = "auto"
+
+    # Foundry bridge settings
+    foundry_enabled: bool = False
+    foundry_endpoint: str = ""
+    foundry_api_key: Optional[str] = None
+    foundry_timeout: int = 30
+
     # Logging
     log_level: str = "error"
     log_payload_request: bool = False
@@ -235,6 +244,12 @@ class AgentConfig:
             token_param=get_str("token_param", "max_tokens"),
             # Mode
             force_responses_mode=get_str("force_responses_mode", "auto"),
+            llm_backend=get_str("llm_backend", "auto"),
+            # Foundry
+            foundry_enabled=get_bool("foundry_enabled", False),
+            foundry_endpoint=get_str("foundry_endpoint", "").rstrip("/"),
+            foundry_api_key=data.get("foundry_api_key"),
+            foundry_timeout=get_int("foundry_timeout", get_int("api_timeout", 30)),
             # Logging
             log_level=get_str("log_level", "error"),
             log_payload_request=get_bool("log_payload_request", False),
@@ -378,6 +393,19 @@ class AgentConfig:
         if self.api_timeout < 5:
             errors.append(f"api_timeout must be >= 5, got {self.api_timeout}")
 
+        if self.llm_backend not in ("auto", "azure", "foundry"):
+            errors.append(
+                f"llm_backend must be one of auto|azure|foundry, got {self.llm_backend}"
+            )
+
+        if self.foundry_enabled and not self.foundry_endpoint:
+            errors.append("foundry_endpoint is required when foundry_enabled is true")
+
+        if self.foundry_timeout < 5:
+            errors.append(
+                f"foundry_timeout must be >= 5, got {self.foundry_timeout}"
+            )
+
         if self.tools_max_iterations < 1 or self.tools_max_iterations > 20:
             errors.append(
                 f"tools_max_iterations must be in [1, 20], got {self.tools_max_iterations}"
@@ -418,6 +446,11 @@ class AgentConfig:
             "mcp_enabled": self.mcp_enabled,
             "web_search_enable": self.web_search_enable,
             "tools_enable": self.tools_enable,
+            "llm_backend": self.llm_backend,
+            "foundry_enabled": self.foundry_enabled,
+            "foundry_endpoint": self.foundry_endpoint,
+            "foundry_api_key": self._redact_key(self.foundry_api_key),
+            "foundry_timeout": self.foundry_timeout,
         }
 
         return data

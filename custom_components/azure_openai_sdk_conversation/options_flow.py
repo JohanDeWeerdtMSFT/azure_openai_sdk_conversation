@@ -24,13 +24,21 @@ from .const import (
     CONF_API_BASE,
     CONF_API_TIMEOUT,
     CONF_API_VERSION,
+    BACKEND_AUTO,
+    BACKEND_AZURE,
+    BACKEND_FOUNDRY,
     CONF_CHAT_MODEL,
     # early wait + vocabulary + utterances
     CONF_EARLY_WAIT_ENABLE,
     CONF_EARLY_WAIT_SECONDS,
     CONF_EXPOSED_ENTITIES_LIMIT,
+    CONF_FOUNDRY_API_KEY,
+    CONF_FOUNDRY_ENABLED,
+    CONF_FOUNDRY_ENDPOINT,
+    CONF_FOUNDRY_TIMEOUT,
     CONF_LOCAL_INTENT_ENABLE,
     # logging
+    CONF_LLM_BACKEND,
     CONF_LOG_LEVEL,
     CONF_LOG_MAX_PAYLOAD_CHARS,
     CONF_LOG_MAX_SSE_LINES,
@@ -80,6 +88,10 @@ from .const import (
     RECOMMENDED_EARLY_WAIT_ENABLE,
     RECOMMENDED_EARLY_WAIT_SECONDS,
     RECOMMENDED_EXPOSED_ENTITIES_LIMIT,
+    RECOMMENDED_FOUNDRY_ENABLED,
+    RECOMMENDED_FOUNDRY_ENDPOINT,
+    RECOMMENDED_FOUNDRY_TIMEOUT,
+    RECOMMENDED_LLM_BACKEND,
     RECOMMENDED_LOCAL_INTENT_ENABLE,
     RECOMMENDED_MAX_TOKENS,
     RECOMMENDED_MCP_ENABLED,
@@ -162,6 +174,46 @@ class AzureOpenAIOptionsFlow(OptionsFlow):
 
         schema = vol.Schema(
             {
+                vol.Optional(
+                    CONF_LLM_BACKEND,
+                    default=self.config_entry.options.get(
+                        CONF_LLM_BACKEND, RECOMMENDED_LLM_BACKEND
+                    ),
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=[BACKEND_AUTO, BACKEND_AZURE, BACKEND_FOUNDRY],
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional(
+                    CONF_FOUNDRY_ENABLED,
+                    default=self.config_entry.options.get(
+                        CONF_FOUNDRY_ENABLED, RECOMMENDED_FOUNDRY_ENABLED
+                    ),
+                ): BooleanSelector(),
+                vol.Optional(
+                    CONF_FOUNDRY_ENDPOINT,
+                    default=self.config_entry.options.get(
+                        CONF_FOUNDRY_ENDPOINT, RECOMMENDED_FOUNDRY_ENDPOINT
+                    ),
+                ): str,
+                vol.Optional(
+                    CONF_FOUNDRY_API_KEY,
+                    default=self.config_entry.options.get(CONF_FOUNDRY_API_KEY, ""),
+                ): str,
+                vol.Optional(
+                    CONF_FOUNDRY_TIMEOUT,
+                    default=self.config_entry.options.get(
+                        CONF_FOUNDRY_TIMEOUT, RECOMMENDED_FOUNDRY_TIMEOUT
+                    ),
+                ): NumberSelector(
+                    NumberSelectorConfig(
+                        min=5,
+                        max=300,
+                        step=5,
+                        mode="box",
+                    )
+                ),
                 vol.Optional(
                     CONF_RECOMMENDED,
                     default=self.config_entry.options.get(CONF_RECOMMENDED, False),

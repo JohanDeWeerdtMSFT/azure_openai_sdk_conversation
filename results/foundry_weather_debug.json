@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-05-04T20:33:25.961480",
+  "endpoint": "https://hafoundryproject-resource.services.ai.azure.com/api/projects/hafoundryproject/applications/myFirstAgent/protocols/openai/responses?api-version=2025-11-15-preview",
+  "scenarios_run": 1,
+  "passed": 1,
+  "failed": 0,
+  "average_latency_ms": 6061.36417388916,
+  "total_tokens": 7283,
+  "results": [
+    {
+      "scenario_name": "weather",
+      "request_text": "What's the current weather and temperature?",
+      "success": true,
+      "latency_ms": 6061.36417388916,
+      "input_tokens": 7201,
+      "output_tokens": 82,
+      "total_tokens": 7283,
+      "output_text": "",
+      "tool_calls": [],
+      "error": null,
+      "multi_turn_depth": 1
+    }
+  ]
+}

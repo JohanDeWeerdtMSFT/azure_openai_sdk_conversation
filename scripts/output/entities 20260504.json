@@ -1,0 +1,222 @@
+[
+  {
+    "entity_id": "cover.badkamer_blind",
+    "friendly_name": "Badkamer blind",
+    "domain": "cover",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "yes",
+    "safety_level": "caution"
+  },
+  {
+    "entity_id": "cover.blind_casper",
+    "friendly_name": "Casper blind",
+    "domain": "cover",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "yes",
+    "safety_level": "caution"
+  },
+  {
+    "entity_id": "cover.blind_living_groot_blind_1",
+    "friendly_name": "Living blind groot",
+    "domain": "cover",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "yes",
+    "safety_level": "caution"
+  },
+  {
+    "entity_id": "cover.blind_speelruimte_blind_2",
+    "friendly_name": "Speelruimte",
+    "domain": "cover",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "yes",
+    "safety_level": "caution"
+  },
+  {
+    "entity_id": "cover.blind_straatkant_blind_1_straat",
+    "friendly_name": "Straatkant",
+    "domain": "cover",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "yes",
+    "safety_level": "caution"
+  },
+  {
+    "entity_id": "cover.blind_watersteen_blind_watersteen",
+    "friendly_name": "Blind watersteen",
+    "domain": "cover",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "yes",
+    "safety_level": "caution"
+  },
+  {
+    "entity_id": "cover.blind_zijkant_blind_2_zijkan",
+    "friendly_name": "Zijkant",
+    "domain": "cover",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "yes",
+    "safety_level": "caution"
+  },
+  {
+    "entity_id": "cover.bureau_veerle_blind_1",
+    "friendly_name": "cover.bureau_veerle_blind_1",
+    "domain": "cover",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "yes",
+    "safety_level": "caution"
+  },
+  {
+    "entity_id": "cover.masterbed_groot_blind_1_mgroot",
+    "friendly_name": "Masterbed Groot",
+    "domain": "cover",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "yes",
+    "safety_level": "caution"
+  },
+  {
+    "entity_id": "cover.masterbed_klein_blind_2_mklein",
+    "friendly_name": "Masterbed klein",
+    "domain": "cover",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "yes",
+    "safety_level": "caution"
+  },
+  {
+    "entity_id": "cover.roluikmodule_6_verdiep_vmb2ble_10_blind_1",
+    "friendly_name": "Bureau Veerle",
+    "domain": "cover",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "yes",
+    "safety_level": "caution"
+  },
+  {
+    "entity_id": "cover.rosie_blind",
+    "friendly_name": "Rosie blind",
+    "domain": "cover",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "yes",
+    "safety_level": "caution"
+  },
+  {
+    "entity_id": "sensor.condition",
+    "friendly_name": "sensor.condition",
+    "domain": "sensor",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "no",
+    "safety_level": "safe"
+  },
+  {
+    "entity_id": "sensor.detailed_condition",
+    "friendly_name": "sensor.detailed_condition",
+    "domain": "sensor",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "no",
+    "safety_level": "safe"
+  },
+  {
+    "entity_id": "sensor.feel_temperature",
+    "friendly_name": "sensor.feel_temperature",
+    "domain": "sensor",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "no",
+    "safety_level": "safe"
+  },
+  {
+    "entity_id": "sensor.full_condition",
+    "friendly_name": "sensor.full_condition",
+    "domain": "sensor",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "no",
+    "safety_level": "safe"
+  },
+  {
+    "entity_id": "sensor.full_condition_5d",
+    "friendly_name": "sensor.full_condition_5d",
+    "domain": "sensor",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "no",
+    "safety_level": "safe"
+  },
+  {
+    "entity_id": "sensor.rain_1d",
+    "friendly_name": "sensor.rain_1d",
+    "domain": "sensor",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "no",
+    "safety_level": "safe"
+  },
+  {
+    "entity_id": "sensor.temperature",
+    "friendly_name": "sensor.temperature",
+    "domain": "sensor",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "no",
+    "safety_level": "safe"
+  },
+  {
+    "entity_id": "timer.kitchen",
+    "friendly_name": "timer.kitchen",
+    "domain": "timer",
+    "area": "",
+    "aliases": "",
+    "typical_states": "idle",
+    "controllable": "no",
+    "safety_level": "safe"
+  },
+  {
+    "entity_id": "weather.buienradar",
+    "friendly_name": "weather.buienradar",
+    "domain": "weather",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "no",
+    "safety_level": "safe"
+  },
+  {
+    "entity_id": "weather.forecast_home_2",
+    "friendly_name": "weather.forecast_home_2",
+    "domain": "weather",
+    "area": "",
+    "aliases": "",
+    "typical_states": "",
+    "controllable": "no",
+    "safety_level": "safe"
+  }
+]
